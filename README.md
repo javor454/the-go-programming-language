@@ -7,7 +7,7 @@
 
 ## Map
 - map is a reference type - points to the underlying data structure
-  - if i pass a map to a function, the function can modify the map
+    - if i pass a map to a function, the function can modify the map
 - set of key-value pairs
 - provides constant time operations for adding, removing, and finding elements
 - key can be of any type that can be compared with ==
@@ -41,11 +41,11 @@ for line, n := range m {
 
 ## Declaration
 - if the initializer part of declaration is omited, the initial value of the variable is set to the zero value of its type
-  - nil: interfaces, reference types (slice, map, pointer, channel, func)
-  - "": string
-  - 0: number
-  - false: bool
-  - special case -> struct has zero value set for each property based on the property type
+    - nil: interfaces, reference types (slice, map, pointer, channel, func)
+    - "": string
+    - 0: number
+    - false: bool
+    - special case -> struct has zero value set for each property based on the property type
 - package level variables are initialized before main begins
 - local func variables are initialized when the execution reaches them
 - scope: region of program text, compile-time property
@@ -54,8 +54,8 @@ for line, n := range m {
 ## Pointers
 - address of a location, where the data of a variable is stored in memory
 - i can get the address of variable:
-  - using ampersand &
-  - by creating unnamed variable using new keyword, value is initialized to zero value of type `a = new(int) // *a = 0`
+    - using ampersand &
+    - by creating unnamed variable using new keyword, value is initialized to zero value of type `a = new(int) // *a = 0`
 - i can get the value of pointer with star `fmt.Println(*a) // 0`
 
 ## Integers
@@ -64,12 +64,12 @@ for line, n := range m {
 
 ## Assignment
 - Tuple assignment
-  - assign multiple return values from a single func call OR multiple single value expressions
-  - all expressions on the right side are evaluated before assignment to the vars on left side
-  - map lookup, type assertion, channel receive produces bool result
-    - val, ok = m["key"]
-    - val, ok = a.(int)
-    - val, ok = <-ch
+    - assign multiple return values from a single func call OR multiple single value expressions
+    - all expressions on the right side are evaluated before assignment to the vars on left side
+    - map lookup, type assertion, channel receive produces bool result
+        - val, ok = m["key"]
+        - val, ok = a.(int)
+        - val, ok = <-ch
   ```go
   package main
   import "fmt"
