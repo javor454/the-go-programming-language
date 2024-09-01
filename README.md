@@ -16,9 +16,8 @@
 ```go
 // add element to map using shorthand
 m := make(map[string]int)
-line := "koko"
-m[line]++
-// ["ahoj":1] 
+line := "ahoj"
+m[line]++ // ["ahoj":1] 
 
 // iterate through map with range loop
 for line, n := range m {
@@ -62,6 +61,60 @@ for line, n := range m {
 - unsigned integers used mainly for bitmasks
 - octal numbers used mainly for file permissions
 
+## Runes
+- alias for `int32`
+- represents single unicode code point which maps to specific character
+- each rune can be represented by 1-4 bytes
+
+## Strings
+- immutable sequence of bytes `[]byte`
+```go
+    s := "abc"
+	s[0] = "L" // compile error: cannot assign to s[0] 
+```
+- UTF8 encoded sequences of runes
+- `len(str)` returns number of bytes, not characters
+  - `fmt.Println(len("łż")) // 4` - each char has 2 bytes
+  - `fmt.Println(len("世界")) // 6` - each char has 3 bytes
+- `utf8.RuneCountInString("łż") // 2` returns number of runes in string
+- `len([]rune("łż")) // 2` returns number of elements in slice
+```go
+    for i, _ := range "łż" {
+		fmt.Println(i) // 0, 2
+	}
+```
+```go
+    s := "12345"
+	fmt.Println(s[1:4]) // "234"
+	fmt.Println(s[:3]) // "123"
+	fmt.Println(s[3:]) // "45"
+````
+- string enclosed with "" brackets interprets escape handles, `` ignores them
+- `` may spread over several lines or show backslashes \ because it represents them literally
+- important string pkgs: strings, bytes, strconv, unicode
+- because strings are immutable, building up strings incrementally can involve a lot of allocation and copying
+  - its more efficient to use `bytes.Buffer`
+- string x []byte conversion
+  - converting string to []byte allocates new byte array holding a copy of the bytes of s and yielding a sice that references that whole array
+  - converting []byte to string also makes a copy
+```go
+	numbers := []int{1, 2, 3, 4, 5}
+	var buf bytes.Buffer
+	buf.WriteByte('[') // or WriteRune
+	for i, v := range numbers {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+		fmt.Fprintf(&buf, "%d", v)
+	}
+	buf.WriteByte(']')
+	fmt.Println(buf.String()) // "[1, 2, 3, 4, 5]"
+```
+
+### Paths
+- pkg path for manipulation with URLS
+  - path/filepath for manipulation with filenames
+
 ## Assignment
 - Tuple assignment
     - assign multiple return values from a single func call OR multiple single value expressions
@@ -88,6 +141,11 @@ for line, n := range m {
 
 ## Performance tips
 - keeping pointers to short-lived objects inside long-lived objects (global vars) will prevent GC to reclaim the short-lived objects
+- because strings are immutable, building up strings incrementally can involve a lot of allocation and copying
+  - its more efficient to use `bytes.Buffer`
+- string x []byte conversion
+  - converting string to []byte allocates new byte array holding a copy of the bytes of s and yielding a sice that references that whole array
+  - converting []byte to string also makes a copy
 
 ## Best practices
 - successful execution path of code should not be indented
