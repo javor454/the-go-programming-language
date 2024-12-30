@@ -32,9 +32,6 @@ for line, n := range m {
 - if an entity is declared outside of function - its visible to all files in the package it belongs
 - package level variable lifetime is entire execution of program
 
-## Consts
-- values fixed at compile time
-
 ## Functions
 - execution ends either when calling return or when the function reaches end
 
@@ -110,7 +107,193 @@ for line, n := range m {
 	buf.WriteByte(']')
 	fmt.Println(buf.String()) // "[1, 2, 3, 4, 5]"
 ```
+- string x number conversion
+  - strconv.Itoa (int to ascii)
+  - strconv.FormatInt (convert to different base)
+  - fmt.Sprintf
+- number x string parsing
+  - strconv.Atoi
+  - strconv.ParseInt
 
+## Constants
+- value known at compile time
+- can be boolean, string, int
+- if type is missing is infered from the expression
+- untyped constants have bigger precision e.g. untyped int has 256 bits
+
+### iota constant generator
+- creates sequence of related values
+
+## Arrays
+- has fixed length, must be known at compile time
+- is passed by value
+- has one type
+- len() returns length
+- if values are not initialized, they are equal zero value
+  - `var a [3]int // [0,0,0]`
+  - `var a [3]int = [3]int{1,2,3}// [1,2,3]`
+- if ... is used instead of length, length of array is determined from initializers
+  - `a := [...]int{1,2,3} // len(a) = 3`
+- if value with index 5 is added, values until that key is filled up to array
+  - `a := [...]int{5: 1} // [0 0 0 0 0 1]`
+- if array type is comparable then the array is comparable too, can be compared with == to check if it has same elements
+```
+    a := [...]int{4: 1}
+	b := [5]int{4: 1}
+	fmt.Printf("%v", a == b) // true
+```
+- slice operator - if slicing `original := make([]int, 0, 10)`
+  - `arr[1:]` - get all elements from 1st to the end of array, has capacity 9: 10-1
+  - `arr[:9]` - get all elements from begin to 9th element, has capacity 10: no offset from start 
+  - `arr[3:5]` - get all elements from 3rd to 5th element, has capacity 7: 10-3
+  - NOTICE the capacity, its copied from original slice but shortened from beginning¨
+  - slicing beyond CAP causes PANIC
+  - slicing beyong LEN extends the slice
+
+## Slices
+- has variable length
+- has header which consists of pointer, length and capacity
+  - pointer - points to underlying array
+  - length - number of elements in array
+  - capacity - reserved memory for all elements
+- when passing slices as argument, the header is passed as value but the reference to the array stays
+- are not comparable by ==, comparison must be done manually
+- zero value of slice is nil
+- nil slice
+  - has no underlying array
+  - has zero length and capacity
+- check if slice nil `sliceA == nil`
+- check if slice empty `len(sliceA) == nil`
+- `copy` - copies values from one slice to another of same type
+```go
+// how to pass slice as reference, if not then the header is passed as value even tho it contains reference to underlying array
+func main() {
+	a := []int{1, 2, 3, 4, 5}
+	remove(&a, 2)
+	fmt.Printf("%v", a)
+}
+
+func remove(slice *[]int, i int) {
+	copy((*slice)[i:], (*slice)[i+1:])
+	(*slice) = (*slice)[:len((*slice))-1]
+}
+```
+
+## Maps
+- hash table
+- unordered collection of key / value pairs where keys are unique
+- get, set, update can be done in constant time
+- zero value is nil
+- when checking if value exists, use this notation, otherwise zero value is returned
+```go
+    a := make(map[int]int)
+	if val, ok := a[1]; ok {
+		fmt.Printf("%v\n", val)
+	} else {
+		fmt.Println("nok")
+	}
+```
+- struct which contain slices, maps, or functions (comparable struct types) CANNOT be used as key in map, otherwise can be
+
+## Struct
+- aggregated data type that groups together 0..N fields with different types
+- field is a named value
+- passed by value
+- create by:
+  - `a := Krysa{}`
+  - `a := new(Krysa)`
+- struct cannot contain field with same type as itself, only a reference to the same type as itself
+- empty struct `struct{}`
+```go
+    type Krysa struct {
+		vek int
+	}
+
+	krysak := Krysa{}
+	fmt.Printf("%v\n", krysak.vek) // 0
+```
+- is comparable by ==
+- embedding structs as fields
+```go
+type Point struct {
+	X, Y float64
+}
+type Circle struct {
+	Point
+	R float64
+}
+
+var c = Circle{
+	Point: Point{X: 0, Y: 0},
+	R:     0,
+}
+
+fmt.Println(c.X, c.Y, c.R)
+```
+
+### JSON
+- standard notation for sending / receiving structured information
+- uses reflection
+- convert go structures to JSON via marshalling - produces byte slice
+  - use field tags in structs - metadata associated to fields in compile time
+```go
+type Str struct {
+	Point int `json:"point"`
+}
+a = Str{Point:5}
+data, err := json.Marshall(a)
+if err != nil {
+	return error.New("marshall failed")
+}
+```
+  - only exported fields are marshalled
+  - use MarshalIndent for human readable json
+- convert JSON to go structure via unmarshalling
+```go
+type Str struct {
+	Point int `json:"point"`
+}
+var objs []Str
+if err := json.Unmarshall(data, &objs); err != nil {
+	
+}
+```
+- Encoder / Decoder - process json stream by chunks
+
+### Text and HTML templates
+- string or file which contains actions enclosed in brackets {{  }}
+  - actions trigger behaviour such as:
+    - printing values
+    - selecting struct fields
+    - if else
+    - loops
+    - calling fns and methods and using other templates
+- possible to pipe output of one operation to another
+```go
+// template
+{{ .Title | printf "%.64s" }} // equal to fmt.Sprintf
+{{ .CreatedAt | daysAgo }} // uses function daysAgo
+
+...
+
+func daysAgo(t time.Time) int {
+  return int()time.Since(t).Hours() / 24)
+}
+```
+- templates workflow 2 step process:
+  1. parse template into internal representation
+  2. execute on specific inputs
+```go
+report, err := template.New("report").
+    Funcs(template.FuncMap{"daysAgo", daysAgo}).
+	Parse(templ)
+if err != nil {...}
+```
+#### HTML templates
+- escaping for additional injection attack protection
+- has safe custom types
+  - template.HTML for trusted HTML
+  - string for untrusted plain text
 ### Paths
 - pkg path for manipulation with URLS
   - path/filepath for manipulation with filenames
@@ -139,6 +322,8 @@ for line, n := range m {
   }
   ```
 
+## Interesting packages
+- url.QueryEscape - encode special characteres for safe use in URL
 ## Performance tips
 - keeping pointers to short-lived objects inside long-lived objects (global vars) will prevent GC to reclaim the short-lived objects
 - because strings are immutable, building up strings incrementally can involve a lot of allocation and copying
