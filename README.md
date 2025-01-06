@@ -47,6 +47,30 @@ for line, n := range m {
 - scope: region of program text, compile-time property
 - lifetime: range of time during program execution when the variable can be refered to by other parts of the program, run-time property
 
+## Assignment
+- Tuple assignment
+  - assign multiple return values from a single func call OR multiple single value expressions
+  - all expressions on the right side are evaluated before assignment to the vars on left side
+  - map lookup, type assertion, channel receive produces bool result
+    - val, ok = m["key"]
+    - val, ok = a.(int)
+    - val, ok = <-ch
+  ```go
+  package main
+  import "fmt"
+  
+  func main() {
+    a, b := func() (bool, bool){
+        return true, false
+    }()
+    fmt.Println(a, b)
+
+   	i, j := 1, 2
+	i, j = j, i
+    fmt.Println(i, j) //i = 2, j = 1
+  }
+  ```
+
 ## Pointers
 - address of a location, where the data of a variable is stored in memory
 - i can get the address of variable:
@@ -280,7 +304,7 @@ func daysAgo(t time.Time) int {
   return int()time.Since(t).Hours() / 24)
 }
 ```
-- templates workflow 2 step process:
+- templates workflow 2-step process:
   1. parse template into internal representation
   2. execute on specific inputs
 ```go
@@ -294,36 +318,138 @@ if err != nil {...}
 - has safe custom types
   - template.HTML for trusted HTML
   - string for untrusted plain text
-### Paths
-- pkg path for manipulation with URLS
-  - path/filepath for manipulation with filenames
 
-## Assignment
-- Tuple assignment
-    - assign multiple return values from a single func call OR multiple single value expressions
-    - all expressions on the right side are evaluated before assignment to the vars on left side
-    - map lookup, type assertion, channel receive produces bool result
-        - val, ok = m["key"]
-        - val, ok = a.(int)
-        - val, ok = <-ch
-  ```go
-  package main
-  import "fmt"
-  
-  func main() {
-    a, b := func() (bool, bool){
-        return true, false
-    }()
-    fmt.Println(a, b)
+## Functions
+- wraps sequence of statements as a unit which can be called from elsewhere in a program multiple times
+- arguments are passed by value, so the func receives a copy
+  - except reference like pointer, slice, map, function or channel
+- go doesnt have default values
+- functions in source without body are implemented in different language (e.g. assembly)
+- function can return one or more named or unnamed return values
+- zero value of function type is nil
+- calling a nil function causes panic
+- named functions can be declared only at package level
+- functions are not comparable
+- functions are considered a reference type
 
-   	i, j := 1, 2
-	i, j = j, i
-    fmt.Println(i, j) //i = 2, j = 1
-  }
-  ```
+### Recursion
+- function which calls itself
+- GOlang stack has variable size and grows up to 1GB of size
+
+### Errors
+- last parameter in function
+- if error is not nil, other returned parameters might be usually ignored if theres not a requirement to return partial data (bytes written etc. )
+- because errors are usually chained, messages should not be capitalized and should avoid newlines
+- error messages should be consistent
+- in case the problem is transient (přechodný) it might make sense to retry (backoff strategy etc.)
+- in case its impossible to continue (bug), the caller can log error and stop the program gracefully although its best practice to return the information to the caller OR continue with limited functionality
+- if the problem is one cause use `ok`, in case there might be several causes to the issue use `err`
+```go
+value, ok := cache.Lookup(key)
+if !ok {...}
+resp, err := http.Get(url)
+if err != nil {...}
+```
+- error je interface
+
+### Anonymous functions (closure) 
+- fixed in 1.22
+- has access to entire lexical environment (can access variables outside of its scope - these can be garbage collected as soon as all the references to the returned functions are gone)
+- captures values outside of its lexical scope by reference
+```go
+func createCounter() func() int {
+    count := 0          // count can't be garbage collected
+    return func() int { // while this function exists
+        count++
+        return count
+    }
+}
+```
+
+### Variadic functions
+- has variadic number of arguments e.g. `fmt.Printf()`
+```go
+func sum(vals ...int) int {
+	var total int
+	for _, val := range vals {
+        total += val
+    }
+	return total
+}
+values := []int{1,2,3,4}
+sum(values...)
+```
+
+### Deferred function calls
+- call deffered until the function containing the statement finishes:
+  - succesfully on return
+  - panic 
+- any number of calls can be deffered, they will be executed in the reverse order they were called
+- usually used to ensure release of resources right after acquire of resources upon operations like:
+  - open/close
+  - connect/disconnect
+  - lock/unlock
+
+### Panic
+- go runtime panics in case it runs into problems at runtime like out-of-bounds array access or nil pointer dereference
+- usually functions with name prefix Must panic in case of error
+- when panic occurs, all deffered funcs run in reverse order, program is terminated and the stack is printed on standard error output
+
+#### Recover
+- panics can be recovered using the recover func in defer of the func which panicked
+- this will stop the panic and return its value, then the func that panicked returns normally instead of continuing where it left off
+
+## Methods
+- function associated with particular type
+- method can be created on any named type which is not pointer nor interface
+```go
+type IntSlice []int
+
+// Sum calculates the sum of all elements in the slice
+func (s IntSlice) Sum() int {
+    total := 0
+    for _, v := range s {
+        total += v
+    }
+    return total
+}
+```
+- pointer receiver is used when method needs to update the object its associated to
+- if one method has pointer receiver, then all other methods should have it too
+- receiver can be nil in case of pointer receivers, value receivers always need value
+- encapsulation
+  - using private fields and methods in combination with public methods as getters and setters
+- composition
+  - using embedding structs as fields e.g.
+```go
+type Point struct {
+	X, Y float64
+}
+type Circle struct {
+	Point // or *Point
+	R float64
+}
+```
+  - embedded structs can be pointers
+  - method can be used as a value e.g.
+```go
+p := Point{1, 2}
+met := p.ScaleBy
+met(2)
+```
+- when naming getters, we usually omit the word "Get"
+  - other prefixes are also ommited like Fetch, Find, Lookup
+
+## Interfaces
+- set of methods which describe behavior of a type - it is enough that type implements all methods of interface
+- satisfied implicitly
+- can be implemented by any type
+
 
 ## Interesting packages
 - url.QueryEscape - encode special characteres for safe use in URL
+- pkg path for manipulation with URLS
+  - path/filepath for manipulation with filenames
 ## Performance tips
 - keeping pointers to short-lived objects inside long-lived objects (global vars) will prevent GC to reclaim the short-lived objects
 - because strings are immutable, building up strings incrementally can involve a lot of allocation and copying
@@ -334,3 +460,51 @@ if err != nil {...}
 
 ## Best practices
 - successful execution path of code should not be indented
+- because errors are usually chained, messages should not be capitalized and should avoid newlines
+- error should be the last parameter in function return params
+- in case error is returned by function, other returned parameters can be ignored if the requirements doesn't state otherwise
+- in case the problem is transient (přechodný) it might make sense to retry (backoff strategy etc.)
+- in case its impossible to continue in execution (bug), the caller can log error and stop the program gracefully although its best practice to return the information to the caller OR continue with limited functionality
+- if one method has pointer receiver, then all other methods should have it too
+- when naming getters, we usually omit the word "Get"
+
+## Interesting problems
+
+### Iteration variable capture
+- This happens because Go's for loop reuses the same variable for each iteration. Closures capture the variable reference, not its value at creation time
+```go
+// fc will create and later remove all dirs
+
+// bad
+var rmdirs []func()
+for i := 0; i<len(dirs); i++ {
+	os.MkdirAll(dirs[i], 0755) // ok
+	rmdirs = append(rmdirs, func() {
+	    os.RemoveAll(dirs[i]) // incorrect, after loop is done, i will hold final loop i value	
+    })
+}
+
+//good
+var rmdirs []func()
+for i := 0; i<len(dirs); i++ {
+	helpVar := i // helper var will capture value of i even after loop end
+    os.MkdirAll(dirs[i], 0755)
+    rmdirs = append(rmdirs, func() {
+        os.RemoveAll(dirs[helpVar])	
+    })
+}
+```
+
+### Tracing using defer and closure
+```go
+func bigSlowOperation() {
+    defer trace("bigSlowOperation")()
+    time.Sleep(3 * time.Second)
+}
+
+func trace(msg string) func() {
+    start := time.Now()
+    fmt.Printf("enter %s\n", msg)
+    return func() { fmt.Printf("exit %s (%s)\n", msg, time.Since(start)) }
+}
+```
