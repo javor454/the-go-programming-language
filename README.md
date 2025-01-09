@@ -3,6 +3,8 @@
 - To write efficient code, you need to be aware of the lifecycle of variables
 - if file contains `init()` func, its automatically executed on program start
 
+## Variable
+- each variable has a type and a value
 
 
 ## Map
@@ -444,6 +446,11 @@ met(2)
 - set of methods which describe behavior of a type - it is enough that type implements all methods of interface
 - satisfied implicitly
 - can be implemented by any type
+- interface type is a set of methods that a concrete type must implement
+- supports embedding (composition)
+- type satisfies interface if it implements all methods of interface
+- check if type satisfies interface `var _ io.Writer = (*bytes.Buffer)(nil)`
+- zero value of interface is nil (nil value and type)
 
 
 ## Interesting packages
