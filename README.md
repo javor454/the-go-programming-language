@@ -452,6 +452,82 @@ met(2)
 - check if type satisfies interface `var _ io.Writer = (*bytes.Buffer)(nil)`
 - zero value of interface is nil (nil value and type)
 
+### Error interface
+- error is an interface with method `Error() string`
+- when created by New, underlying type is `*errors.errorString` = error created with same value is always different
+  - fmt.Println(errors.New("EOF") == errors.New("EOF")) // false
+- more popular is fmt.Errorf which formats error message and returns it
+
+### Type assertion
+- checks if the value is of a certain type
+- if not, it panics
+- if yes:
+  - if the asserted type is a concrete type - extracts the value to a new variable of asserted type
+  - if the asserted type is an interface - makes more methods available, but the value is still of original type
+  - if the asserted type is a nil interface - it panics
+- to prevent panic, use comma ok idiom
+```go
+var w io.Writer
+w, ok := r.(io.Writer)
+if !ok {
+    fmt.Println("r does not satisfy io.Writer")
+}
+```
+- is often used in switch statements
+```go
+switch x.(type) {
+case nil:
+    // ...
+}
+```
+
+## Goroutines and Channels
+- communicating sequential processes (CSP)
+  - model of concurrency where values are passed between independent activities (goroutines) but variables are mostly confined to single activity
+- shared memory multithreading
+
+### Goroutines
+- concurrently executing activity
+- main function is also a goroutine
+- new goroutine is created with `go` keyword
+- when main function returns, all goroutines are killed
+
+### Channels
+- connections between activities
+- communication mechanism which lets goroutines communicate with each other
+- channels are typed, can be used to send and receive values with the same type
+- created with `make` keyword
+```go
+ch := make(chan int)
+```
+- reference type
+- send statement
+```go
+ch <- 1
+```
+- receive statement
+```go
+x := <-ch
+<-ch // receive, ignore value
+```
+- close = closes channel, no more sends allowed, if send then panic
+- receive from closed channel yields the values already send until no more values are left
+- channels can be closed with `close` keyword
+```go
+close(ch)
+```
+
+#### Unbuffered channels
+- created with `make(chan int)`
+- send and receive block until both sender and receiver are ready
+
+
+
+
+
+
+
+
 
 ## Interesting packages
 - url.QueryEscape - encode special characteres for safe use in URL
@@ -464,6 +540,7 @@ met(2)
 - string x []byte conversion
   - converting string to []byte allocates new byte array holding a copy of the bytes of s and yielding a sice that references that whole array
   - converting []byte to string also makes a copy
+  - pouzit unsafe a pretypovat
 
 ## Best practices
 - successful execution path of code should not be indented
