@@ -519,12 +519,145 @@ close(ch)
 
 #### Unbuffered channels
 - created with `make(chan int)`
-- send and receive block until both sender and receiver are ready
+- send operation blocks the sending goroutine until the receive operation is performed by another goroutine
+- receive operation blocks the receiving goroutine until the send operation is performed by another goroutine
+- use struct{}{} as a value to send to channel to signal completion
+- use ok idiom to check if channel is closed
+```go
+x, ok := <-ch
+if !ok {
+    fmt.Println("channel is closed")
+}
+```
+- when ranging over channel, the loop will exit when the channel is closed
+```go
+for x := range ch {
+    fmt.Println(x)
+}
+```
+
+#### Pipelines
+- connected set of stages (goroutines) by channels
+
+#### Unidirectional channels
+- send only `chan<-`
+- receive only `<-chan`
+- violation of this rule will cause compile error
+- close on send only channel will cause compile error
+- can convert bidirectional channel to unidirectional, but not the other way around
+
+#### Buffered channels
+- has queue of elemements, determined by capacity `make(chan int, 100)`
+- send operation inserts element at the end of queue
+- receive operation removes element from the beginning of queue
+- if the buffer is full, the sending operation blocks until the buffer has space
+- if the buffer is empty, the receiving operation blocks
+- goroutine leak
+  - if the buffer is too small, the sending goroutine will block and the goroutine will leak - will not be automatically collected by GC
+- waitgroup
+  - used to wait for a set of goroutines to finish
+  - created with `sync.WaitGroup`
+  - add number of goroutines to wait for with `Add`
+  - done with `Done`
+  - wait with `Wait`
+
+#### Multiplexing using select
+- used to wait on multiple channels
+- select statement
+```go
+select {
+case <-ch1:
+    // ...
+case <-ch2:
+    // ...
+default:
+    // ...
+}
+```
+- default case is optional
+- if default case is present, it will be executed if no other case is ready
+- if default case is not present, the select will block until one of the cases is ready
+- if multiple cases are ready, one is chosen at random
+- select{} waits forever
+- channel zero value is nil
+  - nil channel will block forever
+
+## Concurrency with shared variables
+
+### Race condition
+- data race - when two goroutines access the same variable concurrently and at least one of them is a write
+- do not communicate by sharing memory, share memory by communicating
+- monitor goroutine
+  - goroutine which brokers access to variable using channel requests
+- detect race condition with `go run -race`
+
+### Mutex
+- mutual exclusion = lock
+- used to prevent race condition
+- lock and unlock should be used in pairs, or with defer
+- if lock is acquired by goroutine, the next goroutine which tries to acquire gets blocked until the lock is released
+
+### Deadlock
+- A deadlock is a situation in concurrent programming where two or more processes are unable to proceed because each is waiting for resources held by another process, creating a circular dependency that prevents any progress.
+
+#### RWMutex
+- read-write Mutex
+- allows multiple readers or a single writer
+
+### Sync.once
+- used to execute a function only once
+- implemented by mutex
+
+## Goroutines and threads
+- OS threads
+  - fixed size block of memory 2MB for its stack
+- goroutines
+  - dynamic size starts at 2KB
+  - grow and shrink as needed
+  - have no identity
+
+### Goroutine scheduling
+- OS threads are scheduled by OS kernel
+- go runtime multiplexes (schedules) N goroutines on M OS threads
+
+### GOMAXPROCS
+- controls how many OS threads are used by the Go runtime to run goroutines
+- default is number of available CPU cores
+- can be set with `runtime.GOMAXPROCS(n)`
+
+## Packages and the go tool
+- brings modularity by packaging reusable code together
+- package is a collection of source files in the same directory
+- each directory contains at least one file with package clause `package main`
+- package name is the directory name
+- package declaration must be the first line in the source file
+- package can be imported using `import` keyword
+- import can be used to import packages
+
+## Testing
+- package `testing`
+- `go test` command
+- `go test -bench` command
+- `go test -cover` command
+- `go test -v` command
+- `go test -run` command
+
+### Test files
+- must be in the same directory as the file it is testing
+- must be named `*.test.go`
+- must import `testing` package
+- must contain `Test` prefix
+- must be in the same package as the file it is testing
 
 
-
-
-
+## Low level programming
+- unsafe package
+  - allows to bypass type safety of Go
+  - provides low level functions for manipulating pointers
+  - can cause program to crash
+  - can cause data races
+  - can cause memory leaks
+- calling c code from go
 
 
 
@@ -551,6 +684,12 @@ close(ch)
 - in case its impossible to continue in execution (bug), the caller can log error and stop the program gracefully although its best practice to return the information to the caller OR continue with limited functionality
 - if one method has pointer receiver, then all other methods should have it too
 - when naming getters, we usually omit the word "Get"
+- ticker best practice against goroutine leak
+```go
+ticker := time.NewTicker(time.Second)
+<-ticker.c // receive from ticker channel
+ticker.Stop() // cause the ticker goroutine to stop
+```
 
 ## Interesting problems
 
